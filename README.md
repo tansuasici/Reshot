@@ -5,81 +5,125 @@
 <h1 align="center">Reshot</h1>
 
 <p align="center">
-  A fast, simple, open-source screenshot tool for macOS, Windows and Linux.<br>
-  Press a hotkey, select an area, annotate, copy or save. That's it.
+  <strong>Screenshot, mark it up, share it. In about two seconds.</strong><br>
+  A fast, free and open-source screenshot tool for macOS, Windows and Linux.
+</p>
+
+<p align="center">
+  <a href="https://github.com/tansuasici/Reshot/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tansuasici/Reshot?label=download&color=0A84FF"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-232B3D">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-232B3D"></a>
 </p>
 
 ---
 
-Reshot follows the spirit of Lightshot, which is loved for its speed and
-simplicity but no longer maintained, while borrowing polish from tools like
-Shottr and CleanShot. It lives in your menu bar / system tray, stays out of
-the way, and never touches the network.
+Taking a screenshot shouldn't mean opening an editor, waiting for a window and
+hunting for the export button. With Reshot you press one shortcut, drag over
+what you want, add an arrow or a note if you need one, and press
+<kbd>Enter</kbd>. The image is on your clipboard and Reshot is out of the way.
 
-## Features
+It keeps the speed and simplicity that made Lightshot popular, adds the polish
+of tools like Shottr and CleanShot, and runs on every desktop. It is
+**local-only**: no account, no cloud upload and no telemetry.
 
-- **One hotkey** – <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>9</kbd> on macOS,
-  <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>9</kbd> on Windows/Linux, or the tray menu.
-- **Frozen screen** – the monitor under the cursor is captured instantly, so
-  menus and hover states stay put while you select.
-- **Region selection** with resize handles and a live pixel-size label.
-- **Annotations** – pen, line, arrow, rectangle, marker and text, in eight colours, with undo.
-- **Copy or save** – to the clipboard, or as PNG/JPEG.
-- **HiDPI-correct** – output is cropped from the original pixels, at full Retina resolution.
-- **Multi-monitor** aware, works above the macOS menu bar and over full-screen apps.
-- **Local-only** – no accounts, no uploads, no telemetry.
+## Why Reshot
 
-## Keyboard shortcuts
+- ⚡ **Instant.** The screen under your cursor freezes as soon as you press
+  the shortcut, so menus, tooltips and hover states stay put while you select.
+- 🎯 **Precise.** Drag a region, fine-tune it with resize handles and see the
+  exact pixel size as you go.
+- ✏️ **Mark it up in place.** Pen, line, arrow, rectangle, highlighter and
+  text, in eight colours, with undo. Nothing else to open.
+- 📋 **Copy or save in one key.** <kbd>Enter</kbd> copies and
+  <kbd>⌘/Ctrl</kbd>&nbsp;<kbd>S</kbd> saves as PNG or JPEG. The save dialog
+  remembers the last folder you used.
+- 🖥️ **Sharp everywhere.** Output is cut from the original pixels at full
+  Retina/HiDPI resolution, on any monitor of a multi-monitor setup.
+- 🪶 **Lightweight.** About a 4 MB download. It lives in your menu bar or system
+  tray, and opening the app starts a capture right away.
+- 🔒 **Private.** Your screenshots never leave your computer.
+
+## Download
+
+Get the latest version from the
+**[Releases page](https://github.com/tansuasici/Reshot/releases/latest)**.
+
+| Platform | File |
+|----------|------|
+| macOS (Apple Silicon) | `Reshot_x.y.z_aarch64.dmg` |
+| macOS (Intel) | `Reshot_x.y.z_x64.dmg` |
+| Windows | `Reshot_x.y.z_x64-setup.exe` or `.msi` |
+| Linux | `.AppImage`, `.deb` or `.rpm` |
+
+### First launch
+
+Reshot is not code-signed by Apple or Microsoft yet, so your system will ask
+you to confirm the first time you open it.
+
+- **macOS**
+  1. Open the `.dmg` and drag **Reshot** into **Applications**.
+  2. Open Reshot. If macOS says it can't verify the developer, go to
+     *System Settings → Privacy & Security* and click **Open Anyway**.
+  3. When macOS asks for **Screen Recording** permission, allow it, then quit
+     and reopen Reshot.
+- **Windows:** if SmartScreen appears, click **More info → Run anyway**.
+- **Linux:** works on X11 and on Wayland (through the desktop's screenshot
+  portal). Whether the tray icon appears depends on your desktop environment.
+
+## How to use it
+
+1. Press <kbd>⌘</kbd>&nbsp;<kbd>⇧</kbd>&nbsp;<kbd>9</kbd> on macOS or
+   <kbd>Ctrl</kbd>&nbsp;<kbd>Shift</kbd>&nbsp;<kbd>9</kbd> on Windows and Linux.
+   You can also click the Reshot icon in the tray or Dock.
+2. Drag over the area you want.
+3. Mark it up if you need to, then press <kbd>Enter</kbd> to copy or
+   <kbd>⌘/Ctrl</kbd>&nbsp;<kbd>S</kbd> to save.
+
+### Keyboard shortcuts
 
 | Key | Action |
 |-----|--------|
 | <kbd>⌘/Ctrl</kbd> <kbd>⇧</kbd> <kbd>9</kbd> | Take a screenshot |
 | Drag | Select an area |
-| <kbd>Enter</kbd> / <kbd>⌘/Ctrl</kbd> <kbd>C</kbd> | Copy (whole screen if nothing is selected) |
-| <kbd>⌘/Ctrl</kbd> <kbd>S</kbd> | Save as… |
+| <kbd>Enter</kbd> / <kbd>⌘/Ctrl</kbd> <kbd>C</kbd> | Copy (the whole screen if nothing is selected) |
+| <kbd>⌘/Ctrl</kbd> <kbd>S</kbd> | Save as PNG or JPEG |
 | <kbd>⌘/Ctrl</kbd> <kbd>Z</kbd> | Undo |
-| <kbd>P</kbd> <kbd>L</kbd> <kbd>A</kbd> <kbd>R</kbd> <kbd>M</kbd> <kbd>T</kbd> | Pen, Line, Arrow, Rectangle, Marker, Text |
+| <kbd>P</kbd> <kbd>L</kbd> <kbd>A</kbd> <kbd>R</kbd> <kbd>M</kbd> <kbd>T</kbd> | Pen, line, arrow, rectangle, marker, text |
 | <kbd>Esc</kbd> | Cancel |
-
-## Install
-
-Pre-built installers will be published on the
-[Releases](https://github.com/tansuasici/Reshot/releases) page.
-
-- **macOS**: on first use, allow Reshot under *System Settings → Privacy &
-  Security → Screen Recording*. Builds are not notarized yet, so you may need
-  to right-click → *Open* the first time.
-- **Linux**: X11 and Wayland (via the screenshot portal) are supported by the
-  capture library; tray support depends on your desktop environment.
 
 ## Build from source
 
-Requirements: [Rust](https://rustup.rs/) (stable), [Node.js](https://nodejs.org/) 20+
-and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
+You need [Rust](https://rustup.rs/) (stable), [Node.js](https://nodejs.org/)
+20 or newer, and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
 
 ```bash
 git clone https://github.com/tansuasici/Reshot.git
 cd Reshot
 npm install
 npm run tauri dev      # run in development
-npm run tauri build    # produce an installer in src-tauri/target/release/bundle
+npm run tauri build    # build installers into src-tauri/target/release/bundle
 ```
 
-The overlay UI can also be developed in a plain browser with `npx vite`:
-`src/ipc.ts` serves a generated test frame when it is not running inside Tauri.
+You can also work on the overlay UI in a plain browser with `npx vite`. When
+it isn't running inside Tauri, `src/ipc.ts` serves a generated test frame.
 
-## Tech
+Releases are built by GitHub Actions: pushing a `v*` tag builds installers for
+every platform and attaches them to a GitHub release.
 
-[Tauri 2](https://tauri.app/) with a Rust backend
-([xcap](https://github.com/nashaofu/xcap) for capture,
-[arboard](https://github.com/1Password/arboard) for the clipboard) and a
-framework-free TypeScript + Canvas 2D overlay. See
-[CODEBASE_MAP.md](CODEBASE_MAP.md) for the architecture.
+## Under the hood
+
+Reshot is built with [Tauri 2](https://tauri.app/). The Rust backend uses
+[xcap](https://github.com/nashaofu/xcap) for screen capture and
+[arboard](https://github.com/1Password/arboard) for the clipboard. The
+overlay is framework-free TypeScript on Canvas 2D, and pixels go to and from
+it as raw bytes, with no encoding on the hot path.
+[CODEBASE_MAP.md](CODEBASE_MAP.md) describes the architecture.
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Bug reports, ideas and pull requests are all welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ## License
 
