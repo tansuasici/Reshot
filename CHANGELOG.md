@@ -1,0 +1,19 @@
+# Changelog
+
+## 0.2.0
+
+### New: Settings
+Open it from the menu bar / tray icon → **Settings…**. Changes apply right away.
+
+- **Capture shortcut**: click the shortcut and press a new key combination. If another app already uses that combination, your old shortcut keeps working.
+- **Save folder**: choose where the save dialog opens.
+- **Save as**: PNG or JPEG.
+- **Open at login**: start Reshot when you log in. It waits quietly in the menu bar and doesn't take a screenshot on startup.
+
+### Changed
+- The default shortcut on Windows and Linux is now <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>9</kbd> (it was <kbd>Print Screen</kbd>), matching <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>9</kbd> on Mac. You can change it in Settings.
+- The tray menu shows your current shortcut.
+
+## 0.1.0
+
+First release: select part of the screen, mark it up with arrows and notes, then copy or save it.
