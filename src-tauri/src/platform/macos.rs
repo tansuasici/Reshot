@@ -73,7 +73,12 @@ pub fn set_overlay_opaque(window: &WebviewWindow, opaque: bool) {
 }
 
 /// Deactivate Reshot so the previously active app gets focus back.
+///
+/// Not while the Settings window is open: hiding the app would hide it too.
 pub fn return_focus(app: &AppHandle) {
+    if crate::settings_window::is_visible(app) {
+        return;
+    }
     if let Err(e) = app.hide() {
         eprintln!("[reshot] could not return focus: {e}");
     }

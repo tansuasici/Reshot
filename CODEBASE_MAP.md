@@ -45,9 +45,12 @@ The canonical commands are also declared in `.claude/commands.json`.
 ```text
 .
 ├── index.html              # overlay window markup
+├── settings.html           # Settings window markup (second Vite entry)
 ├── src/                    # frontend (overlay UI)
 │   ├── main.ts             # boot, selection, toolbars, keyboard, export (crop + annotations)
 │   ├── ipc.ts              # the ONLY place that talks to Tauri (browser fixture fallback)
+│   ├── settings.ts/.css    # Settings window: shortcut recorder, folder, format, open at login
+│   ├── accelerator.ts      # KeyboardEvent → Tauri accelerator string + display labels
 │   ├── geometry.ts         # rects, resize handles, hit-testing
 │   ├── annotations.ts      # annotation model + drawing (pen, line, arrow, rect, marker, text)
 │   ├── icons.ts            # inline SVG toolbar icons
@@ -61,9 +64,11 @@ The canonical commands are also declared in `.claude/commands.json`.
 │       ├── main.rs         # calls reshot_lib::run()
 │       ├── lib.rs          # builder, plugins, setup, command registration
 │       ├── capture.rs      # capture the monitor under the cursor, hold the frame in state
-│       ├── commands.rs     # IPC commands: frame pixels, copy, save, close
-│       ├── tray.rs         # tray icon + menu
-│       ├── shortcut.rs     # global hotkey registration
+│       ├── commands.rs     # IPC commands: frame pixels, copy, save, close, settings
+│       ├── settings.rs     # Settings struct + settings.json store (migrates v0.1 last-save-dir)
+│       ├── settings_window.rs # opens/focuses the Settings webview
+│       ├── tray.rs         # tray icon + menu (Capture / Settings… / Quit)
+│       ├── shortcut.rs     # global hotkey: register, suspend/resume, change at runtime
 │       ├── overlay.rs      # position/show/hide the pre-created overlay window
 │       ├── error.rs        # Error enum
 │       └── platform/       # #[cfg] per-OS tweaks (macos.rs: window level, Spaces, alpha)

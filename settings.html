@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reshot Settings</title>
+    <link rel="stylesheet" href="/src/settings.css" />
+    <script type="module" src="/src/settings.ts"></script>
+  </head>
+  <body>
+    <main class="settings">
+      <div class="row">
+        <div class="label">
+          <span>Capture shortcut</span>
+          <small id="shortcut-hint">Click, then press the new keys</small>
+        </div>
+        <button id="shortcut" class="recorder" type="button" aria-describedby="shortcut-hint"></button>
+      </div>
+      <p id="shortcut-error" class="error" role="alert" hidden></p>
+
+      <div class="row">
+        <div class="label">
+          <span>Save folder</span>
+          <small id="save-dir" class="path"></small>
+        </div>
+        <button id="choose-dir" type="button">Change…</button>
+      </div>
+
+      <div class="row">
+        <div class="label">
+          <span>Save as</span>
+        </div>
+        <div class="segmented" role="radiogroup" aria-label="Save as">
+          <label><input type="radio" name="format" value="png" /><span>PNG</span></label>
+          <label><input type="radio" name="format" value="jpeg" /><span>JPEG</span></label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="label" for="autostart">
+          <span>Open at login</span>
+        </label>
+        <input id="autostart" class="switch" type="checkbox" role="switch" />
+      </div>
+      <p id="autostart-error" class="error" role="alert" hidden></p>
+    </main>
+  </body>
+</html>

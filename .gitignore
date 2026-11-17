@@ -23,3 +23,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local AI agent tooling (Claude Code Kit) — kept on disk, not in the repo
+.claude/
+agent_docs/
+tasks/
+reports/
+CLAUDE.md
+CLAUDE.project.md
+VERSION
+.kit-baseline
+.kit-manifest
+scripts/*
+!scripts/build-macos-icon.sh

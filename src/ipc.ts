@@ -27,7 +27,7 @@ const inTauri = "__TAURI_INTERNALS__" in window;
 
 async function tauriInvoke<T>(
   cmd: string,
-  payload?: Uint8Array,
+  payload?: Uint8Array | Record<string, unknown>,
   headers?: Record<string, string>,
 ): Promise<T> {
   const { invoke } = await import("@tauri-apps/api/core");
@@ -111,6 +111,68 @@ export async function saveImage(img: RgbaImage, fileName: string): Promise<boole
     return true;
   }
   return tauriInvoke<boolean>("save_image", bytesOf(img), imageHeaders(img, { "x-filename": fileName }));
+}
+
+// ---- Settings window ----
+
+export type ImageFormat = "png" | "jpeg";
+
+export interface Settings {
+  /** Capture hotkey as a Tauri accelerator, e.g. `CommandOrControl+Shift+9`. */
+  shortcut: string;
+  /** Folder the save dialog opens in. */
+  saveDir: string | null;
+  format: ImageFormat;
+  /** Open at login, as the OS reports it. */
+  autostart: boolean;
+}
+
+const fixtureSettings: Settings = {
+  shortcut: "CommandOrControl+Shift+9",
+  saveDir: "/Users/you/Pictures",
+  format: "png",
+  autostart: false,
+};
+
+export async function getSettings(): Promise<Settings> {
+  if (!inTauri) return { ...fixtureSettings };
+  return tauriInvoke<Settings>("get_settings");
+}
+
+/** Switch the capture hotkey. Rejects (old one kept) if it can't be registered. */
+export async function setShortcut(accelerator: string): Promise<void> {
+  if (!inTauri) {
+    fixtureSettings.shortcut = accelerator;
+    return;
+  }
+  await tauriInvoke("set_shortcut", { accelerator });
+}
+
+/** Release the hotkey while a new one is being recorded. */
+export async function suspendShortcut(): Promise<void> {
+  if (inTauri) await tauriInvoke("suspend_shortcut");
+}
+
+/** Re-register the saved hotkey. */
+export async function resumeShortcut(): Promise<void> {
+  if (inTauri) await tauriInvoke("resume_shortcut");
+}
+
+/** Pick the save folder. Resolves the new folder, or `null` if cancelled. */
+export async function chooseSaveDir(): Promise<string | null> {
+  if (!inTauri) return fixtureSettings.saveDir;
+  return tauriInvoke<string | null>("choose_save_dir");
+}
+
+export async function setFormat(format: ImageFormat): Promise<void> {
+  if (inTauri) await tauriInvoke("set_format", { format });
+  else fixtureSettings.format = format;
+}
+
+/** Turn open-at-login on/off. Resolves the state the OS reports afterwards. */
+export async function setAutostart(enabled: boolean): Promise<boolean> {
+  if (!inTauri) return enabled;
+  return tauriInvoke<boolean>("set_autostart", { enabled });
 }
 
 function fixturePixels({ width, height }: FrameMeta): Uint8ClampedArray {

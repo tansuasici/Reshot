@@ -1,4 +1,4 @@
-//! IPC commands invoked by the overlay frontend.
+//! IPC commands invoked by the overlay and Settings frontends.
 //!
 //! Pixel data travels as raw bytes in both directions (no JSON, no PNG on the
 //! hot path): `get_frame` returns an `ipc::Response`, and `copy_image` /
@@ -9,13 +9,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_dialog::DialogExt;
 
 use crate::capture::FrameStore;
 use crate::error::{Error, Result};
-use crate::overlay;
+use crate::settings::{Format, SettingsStore};
+use crate::{overlay, shortcut};
+
+/// Command-line flag the login item launches Reshot with.
+pub const AUTOSTART_ARG: &str = "--autostart";
 
 /// Lazily created clipboard handle. Kept alive for the app's lifetime because
 /// on Linux (X11/Wayland) the clipboard contents die with their owner.
@@ -60,27 +66,6 @@ fn validate(width: u32, height: u32, pixels: &[u8]) -> Result<RgbaImage<'_>> {
         height,
         pixels,
     })
-}
-
-/// Output file format, chosen from the file extension.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Format {
-    Png,
-    Jpeg,
-}
-
-impl Format {
-    fn from_path(path: &Path) -> Self {
-        match path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(str::to_ascii_lowercase)
-            .as_deref()
-        {
-            Some("jpg" | "jpeg") => Self::Jpeg,
-            _ => Self::Png,
-        }
-    }
 }
 
 fn encode(image: &RgbaImage<'_>, format: Format) -> Result<Vec<u8>> {
@@ -131,12 +116,18 @@ pub fn reveal_overlay(app: AppHandle) -> Result<()> {
 
 /// The overlay is listening for captures. On the first call after launch,
 /// take a screenshot: opening Reshot from Finder/Spotlight means "capture now".
+/// Not when the login item started it, though.
 #[tauri::command]
 pub fn overlay_ready(app: AppHandle) {
     static LAUNCH_CAPTURE_DONE: AtomicBool = AtomicBool::new(false);
-    if !LAUNCH_CAPTURE_DONE.swap(true, Ordering::SeqCst) {
+    if !LAUNCH_CAPTURE_DONE.swap(true, Ordering::SeqCst) && !launched_at_login(std::env::args()) {
         crate::capture::trigger(&app);
     }
+}
+
+/// Whether the process was started by the open-at-login item.
+fn launched_at_login<I: IntoIterator<Item = String>>(args: I) -> bool {
+    args.into_iter().skip(1).any(|a| a == AUTOSTART_ARG)
 }
 
 /// Hide the overlay (Esc, after copy/save).
@@ -173,25 +164,32 @@ pub fn copy_image(request: Request<'_>, clipboard: State<'_, ClipboardStore>) ->
 #[tauri::command]
 pub async fn save_image(app: AppHandle, request: Request<'_>) -> Result<bool> {
     let image = parse_image(&request)?;
-    let file_name = request
-        .headers()
-        .get("x-filename")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("Reshot.png")
-        .to_owned();
+    let settings = app.state::<SettingsStore>().get();
+    let file_name = suggested_file_name(
+        request
+            .headers()
+            .get("x-filename")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("Reshot"),
+        settings.format,
+    );
 
     // The overlay sits above everything, including the save panel.
     if let Some(win) = app.get_webview_window(overlay::LABEL) {
         win.hide()?;
     }
 
-    let mut dialog = app
-        .dialog()
-        .file()
-        .set_file_name(file_name)
-        .add_filter("PNG", &["png"])
-        .add_filter("JPEG", &["jpg", "jpeg"]);
-    if let Some(dir) = last_save_dir(&app).or_else(|| app.path().picture_dir().ok()) {
+    // The default format's filter comes first, so the dialog preselects it.
+    let mut dialog = app.dialog().file().set_file_name(file_name);
+    dialog = match settings.format {
+        Format::Png => dialog
+            .add_filter("PNG", &["png"])
+            .add_filter("JPEG", &["jpg", "jpeg"]),
+        Format::Jpeg => dialog
+            .add_filter("JPEG", &["jpg", "jpeg"])
+            .add_filter("PNG", &["png"]),
+    };
+    if let Some(dir) = start_dir(&app, settings.existing_save_dir()) {
         dialog = dialog.set_directory(dir);
     }
     // Async command → runs on the async runtime, so blocking here is fine.
@@ -212,34 +210,111 @@ pub async fn save_image(app: AppHandle, request: Request<'_>) -> Result<bool> {
     Ok(true)
 }
 
-/// File in the app config dir holding the folder of the last save.
-fn last_save_dir_file(app: &AppHandle) -> Option<PathBuf> {
-    app.path()
-        .app_config_dir()
-        .ok()
-        .map(|d| d.join("last-save-dir"))
+/// `name` with the extension of `format` (the overlay always sends `.png`).
+fn suggested_file_name(name: &str, format: Format) -> String {
+    Path::new(name)
+        .with_extension(format.extension())
+        .to_string_lossy()
+        .into_owned()
 }
 
-/// The folder the user last saved into, if it still exists.
-fn last_save_dir(app: &AppHandle) -> Option<PathBuf> {
-    let saved = std::fs::read_to_string(last_save_dir_file(app)?).ok()?;
-    let dir = PathBuf::from(saved.trim_end_matches('\n'));
-    dir.is_dir().then_some(dir)
+/// Where the save dialog opens: the saved folder, else Pictures.
+fn start_dir(app: &AppHandle, saved: Option<&Path>) -> Option<PathBuf> {
+    saved
+        .map(Path::to_path_buf)
+        .or_else(|| app.path().picture_dir().ok())
 }
 
 /// Remember `dir` for the next save dialog. Best effort: a failure only
-/// means the next dialog opens in the default folder.
+/// means the next dialog opens in the previous folder.
 fn remember_save_dir(app: &AppHandle, dir: &Path) {
-    let Some(file) = last_save_dir_file(app) else {
-        return;
-    };
-    let written = file
-        .parent()
-        .map_or(Ok(()), std::fs::create_dir_all)
-        .and_then(|()| std::fs::write(&file, dir.to_string_lossy().as_bytes()));
-    if let Err(e) = written {
+    let store = app.state::<SettingsStore>();
+    if let Err(e) = store.update(|s| s.save_dir = Some(dir.to_path_buf())) {
         eprintln!("[reshot] could not remember save folder: {e}");
     }
+}
+
+/// What the Settings window shows.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsView {
+    shortcut: String,
+    save_dir: Option<String>,
+    format: Format,
+    autostart: bool,
+}
+
+/// Current settings, with open-at-login read from the OS.
+#[tauri::command]
+pub fn get_settings(app: AppHandle) -> SettingsView {
+    let settings = app.state::<SettingsStore>().get();
+    let save_dir =
+        start_dir(&app, settings.existing_save_dir()).map(|d| d.to_string_lossy().into_owned());
+    SettingsView {
+        shortcut: settings.shortcut,
+        save_dir,
+        format: settings.format,
+        autostart: app.autolaunch().is_enabled().unwrap_or(false),
+    }
+}
+
+/// Use `accelerator` as the capture hotkey from now on.
+#[tauri::command]
+pub async fn set_shortcut(app: AppHandle, accelerator: String) -> Result<()> {
+    shortcut::change(&app, &accelerator)
+}
+
+/// Release the hotkey while the Settings window records a new one.
+#[tauri::command]
+pub async fn suspend_shortcut(app: AppHandle) {
+    shortcut::suspend(&app);
+}
+
+/// Re-register the saved hotkey (recording cancelled).
+#[tauri::command]
+pub async fn resume_shortcut(app: AppHandle) -> Result<()> {
+    shortcut::resume(&app)
+}
+
+/// Pick the save folder. Returns the new folder, or `None` if cancelled.
+#[tauri::command]
+pub async fn choose_save_dir(app: AppHandle) -> Result<Option<String>> {
+    let current = app.state::<SettingsStore>().get();
+    let mut dialog = app.dialog().file();
+    if let Some(dir) = start_dir(&app, current.existing_save_dir()) {
+        dialog = dialog.set_directory(dir);
+    }
+    // Async command → runs on the async runtime, so blocking here is fine.
+    let Some(picked) = dialog.blocking_pick_folder() else {
+        return Ok(None);
+    };
+    let dir = picked
+        .into_path()
+        .map_err(|_| Error::InvalidRequest("unsupported folder"))?;
+    app.state::<SettingsStore>()
+        .update(|s| s.save_dir = Some(dir.clone()))?;
+    Ok(Some(dir.to_string_lossy().into_owned()))
+}
+
+/// Set the format the save dialog suggests.
+#[tauri::command]
+pub fn set_format(app: AppHandle, format: Format) -> Result<()> {
+    app.state::<SettingsStore>().update(|s| s.format = format)
+}
+
+/// Turn open-at-login on or off. Returns the state the OS reports afterwards.
+#[tauri::command]
+pub async fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool> {
+    let autolaunch = app.autolaunch();
+    let changed = if enabled {
+        autolaunch.enable()
+    } else {
+        autolaunch.disable()
+    };
+    changed.map_err(|e| Error::Autostart(e.to_string()))?;
+    autolaunch
+        .is_enabled()
+        .map_err(|e| Error::Autostart(e.to_string()))
 }
 
 #[cfg(test)]
@@ -265,11 +340,23 @@ mod tests {
     }
 
     #[test]
-    fn format_from_extension() {
-        assert_eq!(Format::from_path(Path::new("a.PNG")), Format::Png);
-        assert_eq!(Format::from_path(Path::new("a.jpg")), Format::Jpeg);
-        assert_eq!(Format::from_path(Path::new("a.JPEG")), Format::Jpeg);
-        assert_eq!(Format::from_path(Path::new("noext")), Format::Png);
+    fn suggested_name_follows_format() {
+        let name = "Reshot 2026-11-17 at 10.00.00.png";
+        assert_eq!(
+            suggested_file_name(name, Format::Jpeg),
+            "Reshot 2026-11-17 at 10.00.00.jpg"
+        );
+        assert_eq!(suggested_file_name(name, Format::Png), name);
+        assert_eq!(suggested_file_name("Reshot", Format::Png), "Reshot.png");
+    }
+
+    #[test]
+    fn detects_login_launch() {
+        let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(launched_at_login(args(&["reshot", "--autostart"])));
+        assert!(!launched_at_login(args(&["reshot"])));
+        // The program path itself is never the flag.
+        assert!(!launched_at_login(args(&["--autostart"])));
     }
 
     #[test]
