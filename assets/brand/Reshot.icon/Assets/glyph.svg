@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Same artwork as logo.svg, rescaled from the 824px legacy body to the full 1024px canvas -->
+  <g transform="translate(512 512) scale(1.2427) translate(-512 -512)">
+    <g fill="none" stroke="#0A84FF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M262 382V262H382"/>
+      <path d="M642 262H762V382"/>
+      <path d="M762 642V762H642"/>
+      <path d="M382 762H262V642"/>
+    </g>
+    <path d="M414 668V356H524a86 86 0 0 1 0 172H414M510 528L610 668" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
