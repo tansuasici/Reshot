@@ -5,10 +5,13 @@ mod commands;
 mod error;
 mod overlay;
 mod platform;
+mod settings;
+mod settings_window;
 mod shortcut;
 mod tray;
 
-use tauri::RunEvent;
+use tauri::{Manager, RunEvent};
+use tauri_plugin_autostart::MacosLauncher;
 
 /// Build and run the application. Called from `main.rs`.
 pub fn run() {
@@ -19,6 +22,10 @@ pub fn run() {
         }))
         .plugin(shortcut::plugin())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec![commands::AUTOSTART_ARG]),
+        ))
         .manage(capture::FrameStore::default())
         .manage(commands::ClipboardStore::default())
         .invoke_handler(tauri::generate_handler![
@@ -29,11 +36,19 @@ pub fn run() {
             commands::close_overlay,
             commands::copy_image,
             commands::save_image,
+            commands::get_settings,
+            commands::set_shortcut,
+            commands::suspend_shortcut,
+            commands::resume_shortcut,
+            commands::choose_save_dir,
+            commands::set_format,
+            commands::set_autostart,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let handle = app.handle();
+            app.manage(settings::SettingsStore::load(handle));
             overlay::init(handle)?;
             tray::init(handle)?;
             shortcut::register(handle);

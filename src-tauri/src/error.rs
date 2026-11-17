@@ -17,6 +17,10 @@ pub enum Error {
     Encode(String),
     /// The frontend sent a malformed request.
     InvalidRequest(&'static str),
+    /// The capture hotkey could not be registered (e.g. taken by another app).
+    Shortcut(String),
+    /// Turning open-at-login on or off failed.
+    Autostart(String),
     /// File system error while saving.
     Io(std::io::Error),
     /// Error from the Tauri runtime (window, events, dialogs).
@@ -32,6 +36,8 @@ impl fmt::Display for Error {
             Self::Clipboard(e) => write!(f, "clipboard error: {e}"),
             Self::Encode(e) => write!(f, "image encoding failed: {e}"),
             Self::InvalidRequest(e) => write!(f, "invalid request: {e}"),
+            Self::Shortcut(e) => write!(f, "could not use shortcut {e}"),
+            Self::Autostart(e) => write!(f, "could not change open at login: {e}"),
             Self::Io(e) => write!(f, "file error: {e}"),
             Self::Tauri(e) => write!(f, "{e}"),
         }
