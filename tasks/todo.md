@@ -36,7 +36,7 @@ Steps:
 - [x] Settings window (HTML/TS/CSS) + capability + vite multi-page
 - [x] Autostart plugin wiring
 - [x] Verify: fmt, clippy, check, test (13), release build, tsc, vite build; UI checked in browser
-- [ ] Smoke on macOS via tray (shortcut/folder/format/login item, restart persistence) — user
+- [x] Smoke on macOS via tray (shortcut/folder/format/login item, restart persistence) — user
 - [ ] PR + green CI on macOS/Windows/Linux
 
 ### MVP vertical slice (macOS first) — shipped as v0.1.0
