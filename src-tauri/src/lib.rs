@@ -42,15 +42,20 @@ pub fn run() {
         .build(tauri::generate_context!());
 
     match app {
-        Ok(app) => app.run(|app, event| match event {
-            // Tray app: stay alive with no visible window; only "Quit" exits.
-            RunEvent::ExitRequested {
-                api, code: None, ..
-            } => api.prevent_exit(),
-            // Clicking Reshot in Finder/Dock/Spotlight while it runs = take a screenshot.
-            #[cfg(target_os = "macos")]
-            RunEvent::Reopen { .. } => capture::trigger(app),
-            _ => {}
+        Ok(app) => app.run(|app, event| {
+            // `app` is only needed for the macOS-only `Reopen` arm below.
+            #[cfg(not(target_os = "macos"))]
+            let _ = app;
+            match event {
+                // Tray app: stay alive with no visible window; only "Quit" exits.
+                RunEvent::ExitRequested {
+                    api, code: None, ..
+                } => api.prevent_exit(),
+                // Clicking Reshot in Finder/Dock/Spotlight while it runs = take a screenshot.
+                #[cfg(target_os = "macos")]
+                RunEvent::Reopen { .. } => capture::trigger(app),
+                _ => {}
+            }
         }),
         Err(e) => {
             eprintln!("[reshot] failed to start: {e}");
