@@ -36,6 +36,7 @@ pub fn open(app: &AppHandle) -> Result<()> {
 }
 
 /// Whether the Settings window is on screen.
+#[cfg(target_os = "macos")]
 pub fn is_visible(app: &AppHandle) -> bool {
     app.get_webview_window(LABEL)
         .and_then(|w| w.is_visible().ok())

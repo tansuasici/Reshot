@@ -45,6 +45,9 @@ async function startRecording() {
   showError(shortcutError, null);
   shortcutButton.classList.add("recording");
   shortcutButton.textContent = "Press keys…";
+  // WebKit (macOS) doesn't focus buttons on click; without focus the blur
+  // that cancels recording would never fire.
+  shortcutButton.focus();
   // Otherwise pressing the current hotkey here would take a screenshot.
   await ipc.suspendShortcut().catch(() => {});
 }
@@ -68,28 +71,30 @@ async function stopRecording(accelerator: string | null) {
 
 shortcutButton.addEventListener("click", () => void startRecording());
 shortcutButton.addEventListener("blur", () => void stopRecording(null));
-shortcutButton.addEventListener("keydown", (e) => {
-  if (!recording) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      void startRecording();
+// Switching to another app cancels too, so the hotkey is never left suspended.
+window.addEventListener("blur", () => void stopRecording(null));
+// Listen on the window, not the button: keys must be caught even if WebKit
+// left focus on the body.
+window.addEventListener(
+  "keydown",
+  (e) => {
+    if (!recording) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const noModifiers = !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
+    if (e.key === "Escape" && noModifiers) {
+      void stopRecording(null);
+      return;
     }
-    return;
-  }
-  e.preventDefault();
-  e.stopPropagation();
-  const noModifiers = !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
-  if (e.key === "Escape" && noModifiers) {
-    void stopRecording(null);
-    return;
-  }
-  const result = acceleratorFromEvent(e);
-  if (result.kind === "needs-modifier") {
-    showError(shortcutError, "Add ⌘/Ctrl, ⌥/Alt or ⇧ Shift to the key.");
-  } else if (result.kind === "done") {
-    void stopRecording(result.accelerator);
-  }
-});
+    const result = acceleratorFromEvent(e);
+    if (result.kind === "needs-modifier") {
+      showError(shortcutError, "Add ⌘/Ctrl, ⌥/Alt or ⇧ Shift to the key.");
+    } else if (result.kind === "done") {
+      void stopRecording(result.accelerator);
+    }
+  },
+  { capture: true },
+);
 
 // ---- save folder, format, open at login ----
 
