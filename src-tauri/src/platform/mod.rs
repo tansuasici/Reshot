@@ -3,12 +3,18 @@
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]
-pub use macos::{configure_overlay, return_focus, set_overlay_opaque};
+pub use macos::{
+    SCREEN_CAPTURE_SETTINGS_URL, configure_overlay, ensure_screen_capture_access, return_focus,
+    set_overlay_opaque,
+};
 
 #[cfg(not(target_os = "macos"))]
 mod other;
 #[cfg(not(target_os = "macos"))]
-pub use other::{configure_overlay, return_focus, set_overlay_opaque};
+pub use other::{
+    SCREEN_CAPTURE_SETTINGS_URL, configure_overlay, ensure_screen_capture_access, return_focus,
+    set_overlay_opaque,
+};
 
 use tauri::{AppHandle, WebviewWindow};
 

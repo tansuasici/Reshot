@@ -578,6 +578,8 @@ async function onCapture(meta: ipc.FrameMeta): Promise<void> {
 }
 
 buildToolbars();
-void ipc.onCapture((meta) => {
-  onCapture(meta).catch((e) => showToast(String(e)));
-});
+void ipc
+  .onCapture((meta) => {
+    onCapture(meta).catch((e) => showToast(String(e)));
+  })
+  .then(() => ipc.overlayReady());

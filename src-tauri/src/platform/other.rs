@@ -10,3 +10,11 @@ pub fn set_overlay_opaque(_window: &WebviewWindow, _opaque: bool) {}
 
 /// Hiding the window returns focus to the previous app on its own.
 pub fn return_focus(_app: &AppHandle) {}
+
+/// Screen capture needs no runtime permission outside macOS.
+pub fn ensure_screen_capture_access() -> bool {
+    true
+}
+
+/// No settings pane to open outside macOS.
+pub const SCREEN_CAPTURE_SETTINGS_URL: &str = "";

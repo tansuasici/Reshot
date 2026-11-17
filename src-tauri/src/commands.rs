@@ -5,8 +5,9 @@
 //! `save_image` take a raw RGBA body with `x-width` / `x-height` headers.
 
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager, State};
@@ -96,11 +97,8 @@ fn encode(image: &RgbaImage<'_>, format: Format) -> Result<Vec<u8>> {
         ),
         Format::Jpeg => {
             // JPEG has no alpha channel.
-            let rgb: Vec<u8> = image
-                .pixels
-                .chunks_exact(4)
-                .flat_map(|px| [px[0], px[1], px[2]])
-                .collect();
+            let (pixels, _) = image.pixels.as_chunks::<4>();
+            let rgb: Vec<u8> = pixels.iter().flat_map(|&[r, g, b, _]| [r, g, b]).collect();
             JpegEncoder::new_with_quality(&mut out, 92).write_image(
                 &rgb,
                 image.width,
@@ -129,6 +127,16 @@ pub fn show_overlay(app: AppHandle) -> Result<()> {
 #[tauri::command]
 pub fn reveal_overlay(app: AppHandle) -> Result<()> {
     overlay::reveal(&app)
+}
+
+/// The overlay is listening for captures. On the first call after launch,
+/// take a screenshot: opening Reshot from Finder/Spotlight means "capture now".
+#[tauri::command]
+pub fn overlay_ready(app: AppHandle) {
+    static LAUNCH_CAPTURE_DONE: AtomicBool = AtomicBool::new(false);
+    if !LAUNCH_CAPTURE_DONE.swap(true, Ordering::SeqCst) {
+        crate::capture::trigger(&app);
+    }
 }
 
 /// Hide the overlay (Esc, after copy/save).
@@ -183,12 +191,13 @@ pub async fn save_image(app: AppHandle, request: Request<'_>) -> Result<bool> {
         .set_file_name(file_name)
         .add_filter("PNG", &["png"])
         .add_filter("JPEG", &["jpg", "jpeg"]);
-    if let Ok(dir) = app.path().picture_dir() {
+    if let Some(dir) = last_save_dir(&app).or_else(|| app.path().picture_dir().ok()) {
         dialog = dialog.set_directory(dir);
     }
     // Async command → runs on the async runtime, so blocking here is fine.
     let Some(target) = dialog.blocking_save_file() else {
         overlay::show(&app)?;
+        overlay::reveal(&app)?;
         return Ok(false);
     };
     let path = target
@@ -197,7 +206,40 @@ pub async fn save_image(app: AppHandle, request: Request<'_>) -> Result<bool> {
 
     let bytes = encode(&image, Format::from_path(&path))?;
     std::fs::write(&path, bytes)?;
+    if let Some(dir) = path.parent() {
+        remember_save_dir(&app, dir);
+    }
     Ok(true)
+}
+
+/// File in the app config dir holding the folder of the last save.
+fn last_save_dir_file(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("last-save-dir"))
+}
+
+/// The folder the user last saved into, if it still exists.
+fn last_save_dir(app: &AppHandle) -> Option<PathBuf> {
+    let saved = std::fs::read_to_string(last_save_dir_file(app)?).ok()?;
+    let dir = PathBuf::from(saved.trim_end_matches('\n'));
+    dir.is_dir().then_some(dir)
+}
+
+/// Remember `dir` for the next save dialog. Best effort: a failure only
+/// means the next dialog opens in the default folder.
+fn remember_save_dir(app: &AppHandle, dir: &Path) {
+    let Some(file) = last_save_dir_file(app) else {
+        return;
+    };
+    let written = file
+        .parent()
+        .map_or(Ok(()), std::fs::create_dir_all)
+        .and_then(|()| std::fs::write(&file, dir.to_string_lossy().as_bytes()));
+    if let Err(e) = written {
+        eprintln!("[reshot] could not remember save folder: {e}");
+    }
 }
 
 #[cfg(test)]

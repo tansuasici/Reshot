@@ -22,6 +22,7 @@ pub fn run() {
         .manage(capture::FrameStore::default())
         .manage(commands::ClipboardStore::default())
         .invoke_handler(tauri::generate_handler![
+            commands::overlay_ready,
             commands::get_frame,
             commands::show_overlay,
             commands::reveal_overlay,
@@ -41,14 +42,15 @@ pub fn run() {
         .build(tauri::generate_context!());
 
     match app {
-        Ok(app) => app.run(|_app, event| {
+        Ok(app) => app.run(|app, event| match event {
             // Tray app: stay alive with no visible window; only "Quit" exits.
-            if let RunEvent::ExitRequested {
+            RunEvent::ExitRequested {
                 api, code: None, ..
-            } = event
-            {
-                api.prevent_exit();
-            }
+            } => api.prevent_exit(),
+            // Clicking Reshot in Finder/Dock/Spotlight while it runs = take a screenshot.
+            #[cfg(target_os = "macos")]
+            RunEvent::Reopen { .. } => capture::trigger(app),
+            _ => {}
         }),
         Err(e) => {
             eprintln!("[reshot] failed to start: {e}");

@@ -7,6 +7,8 @@ use std::fmt;
 pub enum Error {
     /// Screen capture failed (permissions, no monitor, backend error).
     Capture(String),
+    /// The OS has not granted screen recording access (macOS).
+    PermissionDenied,
     /// A command needed the captured frame, but none is held.
     NoFrame,
     /// The system clipboard rejected the image.
@@ -25,6 +27,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Capture(e) => write!(f, "screen capture failed: {e}"),
+            Self::PermissionDenied => write!(f, "screen recording permission not granted"),
             Self::NoFrame => write!(f, "no captured frame available"),
             Self::Clipboard(e) => write!(f, "clipboard error: {e}"),
             Self::Encode(e) => write!(f, "image encoding failed: {e}"),

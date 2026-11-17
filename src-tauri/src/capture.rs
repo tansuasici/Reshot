@@ -2,6 +2,7 @@
 //! has pulled it.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use serde::Serialize;
@@ -70,21 +71,25 @@ impl FrameStore {
 /// Event the overlay listens to; payload is [`FrameMeta`].
 pub const CAPTURE_READY: &str = "capture-ready";
 
-/// Hotkey / tray entry point. Runs the capture off the main thread and
-/// reports failures to stderr (there is no UI to show them in yet).
+/// Hotkey / tray entry point. Runs the capture off the main thread. A missing
+/// screen recording permission is explained in a dialog; other failures go to
+/// stderr (there is no UI to show them in yet).
 pub fn trigger(app: &AppHandle) {
     if overlay::is_visible(app) {
         return; // never capture our own overlay
     }
     let app = app.clone();
-    std::thread::spawn(move || {
-        if let Err(e) = capture_under_cursor(&app) {
-            eprintln!("[reshot] {e}");
-        }
+    std::thread::spawn(move || match capture_under_cursor(&app) {
+        Ok(()) => {}
+        Err(Error::PermissionDenied) => on_permission_denied(),
+        Err(e) => eprintln!("[reshot] {e}"),
     });
 }
 
 fn capture_under_cursor(app: &AppHandle) -> Result<()> {
+    if !platform::ensure_screen_capture_access() {
+        return Err(Error::PermissionDenied);
+    }
     let started = Instant::now();
     let (cx, cy) = platform::cursor_point(app);
     let monitor = match Monitor::from_point(cx, cy) {
@@ -119,6 +124,22 @@ fn capture_under_cursor(app: &AppHandle) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Screen recording is not granted yet.
+fn on_permission_denied() {
+    // The first request in a process shows macOS's own permission prompt, so
+    // stay quiet. If the user tries again while still denied, the system won't
+    // prompt again: take them straight to the Screen Recording settings.
+    static ASKED: AtomicBool = AtomicBool::new(false);
+    if ASKED.swap(true, Ordering::SeqCst)
+        && !platform::SCREEN_CAPTURE_SETTINGS_URL.is_empty()
+        && let Err(e) = std::process::Command::new("open")
+            .arg(platform::SCREEN_CAPTURE_SETTINGS_URL)
+            .spawn()
+    {
+        eprintln!("[reshot] could not open System Settings: {e}");
+    }
 }
 
 fn primary_monitor() -> Result<Monitor> {

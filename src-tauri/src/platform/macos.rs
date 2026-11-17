@@ -5,6 +5,31 @@ use objc2::MainThreadMarker;
 use objc2_app_kit::{NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior};
 use tauri::{AppHandle, WebviewWindow};
 
+#[link(name = "CoreGraphics", kind = "framework")]
+// SAFETY: both functions take no arguments, return a C `bool`, have no
+// preconditions and are thread-safe (macOS 10.15+, below our minimum).
+unsafe extern "C" {
+    safe fn CGPreflightScreenCaptureAccess() -> bool;
+    safe fn CGRequestScreenCaptureAccess() -> bool;
+}
+
+/// Whether Reshot may record the screen. Without it macOS returns blank frames.
+///
+/// When access is missing this also asks for it: the first time macOS shows
+/// its own prompt and adds Reshot to the Screen Recording list. The answer is
+/// cached per process, so a grant only takes effect after a relaunch.
+pub fn ensure_screen_capture_access() -> bool {
+    if CGPreflightScreenCaptureAccess() {
+        return true;
+    }
+    CGRequestScreenCaptureAccess();
+    false
+}
+
+/// System Settings pane where screen recording access is granted.
+pub const SCREEN_CAPTURE_SETTINGS_URL: &str =
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+
 /// Run `f` with the window's `NSWindow`, on the main thread only.
 fn with_ns_window(window: &WebviewWindow, f: impl FnOnce(&NSWindow)) {
     if MainThreadMarker::new().is_none() {
