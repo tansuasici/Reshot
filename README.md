@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/tansuasici/Reshot/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-macOS-0A84FF?style=for-the-badge&logo=apple&logoColor=white"></a>
-  <a href="https://github.com/tansuasici/Reshot/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-0A84FF?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/tansuasici/Reshot/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-0A84FF?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNiAxNicgZmlsbD0nd2hpdGUnPjxwYXRoIGQ9J00wIDBoNy41djcuNUgwek04LjUgMEgxNnY3LjVIOC41ek0wIDguNWg3LjVWMTZIMHpNOC41IDguNUgxNlYxNkg4LjV6Jy8+PC9zdmc+"></a>
   <a href="https://github.com/tansuasici/Reshot/releases/latest"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-0A84FF?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
