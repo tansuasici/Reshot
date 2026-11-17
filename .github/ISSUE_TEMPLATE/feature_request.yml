@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an idea for Reshot
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should it work? Keep in mind Reshot aims to stay fast and simple.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

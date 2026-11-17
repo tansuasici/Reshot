@@ -1,0 +1,198 @@
+---
+name: code-quality-audit
+description: Audit code for smells, error-handling gaps, and maintainability issues with actionable fixes. Use for a general code-quality pass not tied to project rules. To audit against the project's golden-principles.yaml use /quality-audit instead.
+user-invocable: true
+---
+
+# Code Quality Audit
+
+## Core Rule
+
+Surface issues that affect maintainability and correctness, not stylistic preferences. Recommend fixes only with concrete reproduction steps; never apply edits in a report-only request.
+
+## Kit Context
+
+Before starting this skill, ensure you have completed session boot:
+1. Read `CODEBASE_MAP.md` for project understanding
+2. Read `CLAUDE.project.md` if it exists for project-specific rules
+3. Read `tasks/lessons/_index.md` for accumulated corrections (Top Rules + index)
+
+If any of these haven't been read in this session, read them now before proceeding.
+
+## When to Use
+
+Invoke with `/code-quality-audit` when:
+
+- Reviewing a codebase for code smells before a refactoring sprint
+- Onboarding to a new project and assessing code health
+- Preparing for a code review or due diligence assessment
+- After rapid development to identify accumulated technical debt
+
+## Default Behavior
+
+When the user asks to audit, scan, review, or "give me a report" for code quality, produce the full code-quality-audit report automatically using the Process and Output Format sections below. Do not require the user to specify fields.
+
+Only modify files when the user explicitly requests implement / fix / apply / refactor. By default, this skill is **report-only**.
+
+## Scope Rules
+
+- Analyze ONLY the files and directories relevant to this skill's purpose
+- Do not refactor, fix, or modify code — this is a read-only analysis unless explicitly stated otherwise
+- Log unrelated issues found during analysis under `tasks/todo.md > ## Not Now`
+- State every assumption explicitly before acting on it
+- If the user specified a scope (files, directories, modules), respect it strictly
+
+## Context Gathering
+
+Before analysis, map the project:
+1. Read project config (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, etc.)
+2. Identify the tech stack, frameworks, and key dependencies
+3. Map source directories — skip `node_modules`, `vendor`, `build`, `.next`, `dist`, `__pycache__`
+4. Check for existing configurations relevant to this analysis (linters, formatters, CI configs)
+5. If the user specified a scope, narrow to those files/directories only
+
+## Process
+
+### Phase 1: Inventory (first-pass leads)
+
+This pass produces **candidates**, not findings. Treat counts as leads for deeper inspection in later phases. Do not report Phase 1 raw output as the final result.
+
+Determine audit scope:
+
+1. If the user specifies files/directories, audit those
+2. Otherwise, identify key source directories by reading project structure
+3. Skip generated code, vendor directories, lock files, and build output
+
+### Phase 2: Code Smells Analysis
+
+Scan for these categories of code smells:
+
+**Complexity Smells**
+- Functions/methods exceeding 50 lines
+- Deeply nested conditionals (3+ levels)
+- Cyclomatic complexity > 10 per function — but weight it by coverage before reporting it (below)
+- God classes/modules with too many responsibilities
+- Long parameter lists (5+ parameters)
+
+*Weighting complexity by coverage.* A complexity threshold on its own over-reports: a complex function with thorough tests is a known quantity, while a simple untested one can still be wrong. Risk lives in the product of the two, which is what the CRAP metric (Change Risk Anti-Patterns) captures — complexity counted against the coverage that holds it down.
+
+First look for a coverage report already on disk — `coverage/`, `lcov.info`, `.coverage`, `coverage.xml`, `TestResults/`. Do not generate one. Then report:
+
+| Complexity | Coverage | How to report it |
+|---|---|---|
+| > 10 | low or none | **Major** — the finding. Complex and unguarded |
+| > 10 | thorough | **Minor** at most, or a note. Say the coverage, and don't call it debt on complexity alone |
+| > 10 | no coverage data found | `complexity N, coverage unknown` — report the complexity, state that the risk is unweighted. Do not guess a CRAP score |
+
+The formula the metric is named for is `CRAP = CC² × (1 − coverage)³ + CC`, where coverage is the fraction of the function the tests exercise — which is why coverage dominates and why a well-covered complex function scores low. As bands: 1–5 low risk, 5–30 worth a look, 30+ complex and under-tested.
+
+Do not print a CRAP number you did not compute. Either a tool produced it, or the finding says `coverage unknown`.
+
+**Duplication Smells**
+- Repeated code blocks (3+ occurrences of similar logic)
+- Copy-paste patterns with minor variations
+- Parallel inheritance hierarchies
+- Identical conditional structures across files
+
+These are found by reading, which gives you *instances* but not an order. Report duplication as a list of locations, worst-first by your own reading, and say that the ordering is a judgment call. The failure mode here is claiming a computed similarity you never computed — a structural-similarity tool proposes candidate pairs on a normalized comparison; reading proposes them on resemblance.
+
+**Coupling Smells**
+- Feature envy (method uses another class's data more than its own)
+- Inappropriate intimacy (classes accessing each other's internals)
+- Message chains (a.b.c.d.method())
+- Circular dependencies between modules
+
+**Naming Smells**
+- Inconsistent naming conventions within the same codebase
+- Overly abbreviated or cryptic names
+- Boolean parameters without named arguments
+- Generic names (data, info, manager, handler) without context
+
+**Computed metrics (optional — only if the tool is already installed)**
+
+Everything above is read by eye. Two of the measurements have tools that compute them instead, and this skill uses one **only when it is already on PATH**. Do not install one, do not add it to the project's dependencies, and do not clone it.
+
+The common case is that nothing is installed, or that the language is unsupported. Then:
+
+- Report `not measured` with the reason — `no tool installed`, or `language unsupported`.
+- Keep the eyeball findings from Phase 2. They stand on their own; they are just unranked.
+- Never report `not measured` as a pass. An absent measurement is not a clean one.
+
+When a tool is present, report what it returns and attribute the number to the tool rather than to this audit. `unclebob/crapper` computes CRAP per function; `unclebob/dryer` reports pairs of forms whose structure is close enough to review — candidates, still to be judged, not verdicts (both 0BSD). They cover Clojure, Java, Go, TypeScript, Rust and Python — **not C#**, so on a .NET codebase both of these are always `not measured` and Phase 2's reading is the whole result.
+
+Check what the tool does before running it, because a coverage-aware one is not a read-only observer. `crapper` by default **runs the project's test suite** to produce coverage, and on some stacks installs the coverage tooling it needs (a Vitest coverage provider, `cargo-llvm-cov`, `pytest`) to do it. That is a build action, not an audit action:
+
+- Prefer the flags that keep it passive — `--use-existing-coverage` reads reports already on disk, `--no-coverage` gives complexity only and leaves CRAP undefined rather than guessing it.
+- Running the suite or letting a tool install anything is **opt-in**, the same bar as the mutation phase in `/testing-audit`. Ask first; do not let an audit mutate the project's dependencies.
+- If it does produce coverage, say so in the report — that run *is* the coverage report the step above declined to generate, and the reader should know the number came from a fresh suite run rather than from what was already there.
+
+### Phase 3: Error Handling Analysis
+
+Check for error handling issues:
+
+- **Swallowed errors**: empty catch blocks, catch-and-log-only without re-throw
+- **Over-catching**: catching base Exception/Error when specific types are appropriate
+- **Missing error handling**: async operations without try/catch, unchecked return values
+- **Inconsistent patterns**: mix of exceptions, error codes, Result types without clear convention
+- **Error information loss**: re-throwing without preserving original stack trace
+- **Missing cleanup**: no finally/defer/cleanup for resources in error paths
+- **User-facing errors**: raw stack traces or internal errors exposed to users
+
+### Phase 4: Maintainability Assessment
+
+Evaluate:
+
+- **Readability**: Can a new developer understand the code without external context?
+- **Testability**: Can units be tested in isolation? Are dependencies injectable?
+- **Changeability**: How many files need to change for a typical feature addition?
+- **Consistency**: Are patterns applied uniformly across the codebase?
+
+## Output Format
+
+```markdown
+# Code Quality Audit Report
+
+## Executive Summary
+[1-2 paragraphs: overall quality assessment, critical findings count]
+
+## Critical Issues (Must Fix)
+| # | Category | Location | Issue | Suggested Fix |
+|---|----------|----------|-------|---------------|
+| 1 | smell    | file:line | ...   | ...           |
+
+## Major Issues (Should Fix)
+| # | Category | Location | Issue | Suggested Fix |
+|---|----------|----------|-------|---------------|
+
+## Minor Issues (Consider)
+| # | Category | Location | Issue | Suggested Fix |
+|---|----------|----------|-------|---------------|
+
+## Metrics
+- Files analyzed: N
+- Code smells found: N (critical/major/minor)
+- Error handling gaps: N
+- Estimated tech debt: low/medium/high
+- Complexity weighted by coverage: N functions complex-and-unguarded | `coverage unknown` | `not measured: [reason]`
+- Duplication: N candidate pairs from [tool] | `not measured: read by eye, ordering is a judgment call`
+
+## Positive Patterns
+[List well-implemented patterns worth preserving]
+```
+
+## Report Guidelines
+
+- Use tables for structured findings — they're scannable and diffable
+- Include file paths with line numbers (`file.ts:42`) for every finding
+- Separate findings by severity: Critical > Major > Minor
+- End with actionable recommendations, not just observations
+- If no issues found in a category, state it explicitly — don't omit the section
+
+## Notes
+
+- This audit focuses on code-level quality, not architecture (see `/architecture-review`)
+- Security issues should be flagged but detailed security review is separate (use security-reviewer agent)
+- Adapt smell thresholds to the project's language conventions (e.g., functional languages may have longer functions)
+- Distinguish "measured and clean" from "not measured". A check that did not run is reported as `not measured` with the reason, never as `OK` or `0 issues` — the same rule the quality gate follows for `skipped`
+- Weighting complexity by coverage rather than thresholding it alone follows the CRAP metric, which the numeric gates in [unclebob/ub-mode](https://github.com/unclebob/ub-mode) are built on; the reporting rules here are the kit's own
+- Test-quality measurement belongs to `/testing-audit`, which carries the mutation-score phase. This skill stops at production-code smells

@@ -1,0 +1,123 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  font: 13px -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+#frame,
+#ui {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#ui {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.toolbar {
+  position: fixed;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(250, 250, 252, 0.96);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.toolbar.vertical {
+  flex-direction: column;
+}
+
+.toolbar button,
+.palette button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #2c2c2e;
+  cursor: pointer;
+}
+
+.toolbar button:hover,
+.palette button:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.toolbar button.active {
+  background: #0a84ff;
+  color: #fff;
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.palette {
+  position: fixed;
+  display: grid;
+  grid-template-columns: repeat(4, 30px);
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(250, 250, 252, 0.96);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.25),
+    0 6px 18px rgba(0, 0, 0, 0.3);
+  z-index: 11;
+}
+
+.text-input {
+  position: fixed;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px dashed rgba(10, 132, 255, 0.9);
+  outline: none;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  z-index: 9;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  max-width: 80vw;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(20, 20, 22, 0.9);
+  color: #fff;
+  z-index: 20;
+}

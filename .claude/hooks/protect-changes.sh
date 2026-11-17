@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+#
+# protect-changes.sh — PreToolUse hook
+#
+# Blocks edits to architectural files (dependency manifests, migrations,
+# auth/security paths) without explicit approval. Enforces CLAUDE.md
+# "Protected Changes (Approval Required)" rule deterministically — prompt
+# alone is not enough because the agent can decide to proceed silently.
+#
+# Distinct from protect-files.sh (which blocks secret-bearing files like
+# .env and private keys). This hook is about *architectural* protection.
+#
+# Bypass: set CLAUDE_APPROVED=1 in the environment for the duration of the
+# session, or pass it explicitly to the hook subshell. Reasoning behind the
+# approval must be recorded in tasks/decisions.md (ADR template).
+#
+# Build configs (tsconfig, next.config, tailwind.config, Dockerfile, …) only
+# hard-block when CCK_PROTECT_BUILD_CONFIGS=1 (set by the strict profile). In
+# the standard profile they emit a non-blocking heads-up instead, since they are
+# edited routinely. Dependency manifests, migrations, auth logic, and CI
+# workflows always block regardless of profile.
+#
+
+set -euo pipefail
+
+INPUT=$(cat)
+HOOK_LIB="$(cd "$(dirname "$0")/lib" 2>/dev/null && pwd || true)"
+# Fail closed: a safety hook that can't load its library must block, not
+# silently no-op. Empty HOOK_LIB → lib/ missing → exit 2 (CLA-47).
+if [ -z "$HOOK_LIB" ] || [ ! -f "$HOOK_LIB/json-parse.sh" ]; then
+  echo "BLOCKED: $(basename "$0") cannot load .claude/hooks/lib/ — refusing to run fail-open. Reinstall kit hooks (cck init --upgrade)." >&2
+  exit 2
+fi
+source "$HOOK_LIB/json-parse.sh"
+source "$HOOK_LIB/state-counter.sh"
+
+ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+TOOL_NAME=$(parse_json_field "tool_name")
+
+case "$TOOL_NAME" in
+  Edit|Write|NotebookEdit) ;;
+  *) exit 0 ;;
+esac
+
+FILE_PATH=$(parse_json_field "file_path")
+[ -z "$FILE_PATH" ] && exit 0
+
+# Escape hatch
+if [ "${CLAUDE_APPROVED:-0}" = "1" ]; then
+  exit 0
+fi
+
+BASENAME=$(basename "$FILE_PATH")
+# Normalise the path for prefix matching (strip leading ./ and leading slash for comparison)
+NORM=$(echo "$FILE_PATH" | sed 's|^\./||')
+
+BLOCKED=false
+REASON=""
+
+# Dependency manifests — adding/removing dependencies is a protected change
+case "$BASENAME" in
+  package.json|pyproject.toml|requirements.txt|requirements-*.txt|Pipfile|Gemfile|Cargo.toml|go.mod|composer.json|build.gradle|build.gradle.kts|pom.xml|*.csproj|*.fsproj|*.vbproj|Directory.Packages.props|packages.lock.json|packages.config)
+    BLOCKED=true
+    REASON="dependency manifest — new dependencies require explicit approval (CLAUDE.md → Protected Changes)"
+    ;;
+esac
+
+# Migrations & schema files
+if [ "$BLOCKED" = false ]; then
+  case "$NORM" in
+    */migrations/*|migrations/*|*/migrate/*|migrate/*|*/schema.sql|schema.sql|*/schema.prisma|schema.prisma)
+      BLOCKED=true
+      REASON="database migration/schema — confirm rollback plan and production impact"
+      ;;
+  esac
+fi
+
+# Auth / security paths. Presentational components under */components/* are UI,
+# not auth logic — skip them so login forms / auth widgets don't trip the gate
+# on every edit (CLA-48). Backend auth logic (src/auth/, lib/auth/, middleware)
+# still blocks.
+if [ "$BLOCKED" = false ]; then
+  case "$NORM" in
+    */components/*) ;; # presentational — not an auth-logic change
+    */auth/*|auth/*|*/security/*|security/*|*/permissions/*|permissions/*|*/middleware/auth*|*/lib/auth/*)
+      BLOCKED=true
+      REASON="auth/security path — verify threat model and add tests before editing"
+      ;;
+  esac
+fi
+
+# Build system / core architecture configs (basename match). Blocking these is
+# opt-in: the strict profile sets CCK_PROTECT_BUILD_CONFIGS=1, but in the standard
+# profile they are edited routinely, so we advise without blocking (CLA-48).
+if [ "$BLOCKED" = false ]; then
+  case "$BASENAME" in
+    Dockerfile|docker-compose.yml|docker-compose.yaml|Makefile|tsconfig.json|tsconfig.*.json|vite.config.ts|vite.config.js|next.config.js|next.config.mjs|next.config.ts|webpack.config.js|rollup.config.js|tailwind.config.js|tailwind.config.ts|Directory.Build.props|Directory.Build.targets|global.json|*.sln|*.slnx|nuget.config|NuGet.Config)
+      if [ "${CCK_PROTECT_BUILD_CONFIGS:-0}" = "1" ]; then
+        BLOCKED=true
+        REASON="build config — core architecture change, requires plan and approval"
+      else
+        echo "protect-changes: heads-up — '$FILE_PATH' is a build config. Treat structural changes (toolchain, build target, module system) as a Protected Change per CLAUDE.md. Set CCK_PROTECT_BUILD_CONFIGS=1 (strict profile) to enforce a hard stop." >&2
+      fi
+      ;;
+  esac
+fi
+
+# CI workflows (path match — basename alone won't catch e.g. ci.yml under .github/workflows/)
+if [ "$BLOCKED" = false ]; then
+  case "$NORM" in
+    .github/workflows/*.yml|.github/workflows/*.yaml|*/.github/workflows/*.yml|*/.github/workflows/*.yaml)
+      BLOCKED=true
+      REASON="CI workflow — pipeline change, requires plan and approval"
+      ;;
+  esac
+fi
+
+if [ "$BLOCKED" = true ]; then
+  bump_counter "$ROOT/.hook-state/hook-firings.json" "protect-changes"
+  cat <<EOF >&2
+BLOCKED by protect-changes.sh: $FILE_PATH
+Reason: $REASON
+
+To proceed:
+  1. Stop and present 2+ approaches with tradeoffs (per CLAUDE.md → Protected Changes)
+  2. Record the decision in tasks/decisions.md using the ADR template
+  3. Re-run with CLAUDE_APPROVED=1 in the environment
+
+Projects can override this list via .claude/hooks/project/ (see hooks.md).
+EOF
+  exit 2
+fi
+
+exit 0

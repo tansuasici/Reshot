@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#232B3D"/>
+      <stop offset="1" stop-color="#0B0E16"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824px body on a 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <!-- selection crop corners -->
+  <g fill="none" stroke="#0A84FF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M262 382V262H382"/>
+    <path d="M642 262H762V382"/>
+    <path d="M762 642V762H642"/>
+    <path d="M382 762H262V642"/>
+  </g>
+  <!-- R, optically centred in the frame -->
+  <path d="M414 668V356H524a86 86 0 0 1 0 172H414M510 528L610 668" fill="none" stroke="#FFFFFF" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
