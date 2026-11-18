@@ -11,7 +11,7 @@ mod shortcut;
 mod tray;
 
 use tauri::{Manager, RunEvent};
-use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 
 /// Build and run the application. Called from `main.rs`.
 pub fn run() {
@@ -24,12 +24,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
-            Some(vec![commands::AUTOSTART_ARG]),
+            None,
         ))
         .manage(capture::FrameStore::default())
         .manage(commands::ClipboardStore::default())
         .invoke_handler(tauri::generate_handler![
-            commands::overlay_ready,
             commands::get_frame,
             commands::show_overlay,
             commands::reveal_overlay,
@@ -52,6 +51,7 @@ pub fn run() {
             overlay::init(handle)?;
             tray::init(handle)?;
             shortcut::register(handle);
+            refresh_login_item(handle);
             Ok(())
         })
         .build(tauri::generate_context!());
@@ -76,5 +76,17 @@ pub fn run() {
             eprintln!("[reshot] failed to start: {e}");
             std::process::exit(1);
         }
+    }
+}
+
+/// Rewrite an existing open-at-login item so it points at this executable.
+/// The item stores the binary's path, which can change between versions
+/// (for example the macOS binary was renamed from `reshot` to `Reshot`).
+fn refresh_login_item(app: &tauri::AppHandle) {
+    let autolaunch = app.autolaunch();
+    if autolaunch.is_enabled().unwrap_or(false)
+        && let Err(e) = autolaunch.enable()
+    {
+        eprintln!("[reshot] failed to refresh the login item: {e}");
     }
 }
