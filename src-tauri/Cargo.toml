@@ -1,6 +1,6 @@
 [package]
 name = "reshot"
-version = "0.2.1"
+version = "0.3.0"
 description = "Fast, simple, open-source screenshot tool"
 authors = ["tansuasici"]
 license = "MIT"
