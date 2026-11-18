@@ -66,11 +66,6 @@ export async function onCapture(handler: (meta: FrameMeta) => void): Promise<voi
   await listen<FrameMeta>("capture-ready", (e) => handler(e.payload));
 }
 
-/** Tell the backend the capture listener is registered (triggers the launch capture). */
-export async function overlayReady(): Promise<void> {
-  if (inTauri) await tauriInvoke("overlay_ready");
-}
-
 /** Fetch the captured frame's raw RGBA pixels. */
 export async function getFrame(meta: FrameMeta): Promise<Frame> {
   const { width, height } = meta;

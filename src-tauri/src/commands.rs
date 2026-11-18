@@ -7,7 +7,6 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request, Response};
@@ -19,9 +18,6 @@ use crate::capture::FrameStore;
 use crate::error::{Error, Result};
 use crate::settings::{Format, SettingsStore};
 use crate::{overlay, shortcut};
-
-/// Command-line flag the login item launches Reshot with.
-pub const AUTOSTART_ARG: &str = "--autostart";
 
 /// Lazily created clipboard handle. Kept alive for the app's lifetime because
 /// on Linux (X11/Wayland) the clipboard contents die with their owner.
@@ -112,22 +108,6 @@ pub fn show_overlay(app: AppHandle) -> Result<()> {
 #[tauri::command]
 pub fn reveal_overlay(app: AppHandle) -> Result<()> {
     overlay::reveal(&app)
-}
-
-/// The overlay is listening for captures. On the first call after launch,
-/// take a screenshot: opening Reshot from Finder/Spotlight means "capture now".
-/// Not when the login item started it, though.
-#[tauri::command]
-pub fn overlay_ready(app: AppHandle) {
-    static LAUNCH_CAPTURE_DONE: AtomicBool = AtomicBool::new(false);
-    if !LAUNCH_CAPTURE_DONE.swap(true, Ordering::SeqCst) && !launched_at_login(std::env::args()) {
-        crate::capture::trigger(&app);
-    }
-}
-
-/// Whether the process was started by the open-at-login item.
-fn launched_at_login<I: IntoIterator<Item = String>>(args: I) -> bool {
-    args.into_iter().skip(1).any(|a| a == AUTOSTART_ARG)
 }
 
 /// Hide the overlay (Esc, after copy/save).
@@ -348,15 +328,6 @@ mod tests {
         );
         assert_eq!(suggested_file_name(name, Format::Png), name);
         assert_eq!(suggested_file_name("Reshot", Format::Png), "Reshot.png");
-    }
-
-    #[test]
-    fn detects_login_launch() {
-        let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert!(launched_at_login(args(&["reshot", "--autostart"])));
-        assert!(!launched_at_login(args(&["reshot"])));
-        // The program path itself is never the flag.
-        assert!(!launched_at_login(args(&["--autostart"])));
     }
 
     #[test]

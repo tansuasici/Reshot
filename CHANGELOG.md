@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Starting Reshot no longer takes a screenshot. It starts quietly in the menu bar / tray; press the shortcut to capture.
+- macOS shows the app as "Reshot" (not "reshot") in login-item and background-activity notices. If Open at login was on, it is updated automatically.
+
 ## 0.2.0
 
 ### New: Settings
