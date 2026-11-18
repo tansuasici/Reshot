@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 ### New: Automatic updates
 - Reshot checks for a new version shortly after it starts, and from the menu bar / tray icon → **Check for Updates…**. It asks before installing, then restarts.
