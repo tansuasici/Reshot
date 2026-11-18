@@ -21,6 +21,8 @@ pub enum Error {
     Shortcut(String),
     /// Turning open-at-login on or off failed.
     Autostart(String),
+    /// Checking for or installing an update failed.
+    Update(String),
     /// File system error while saving.
     Io(std::io::Error),
     /// Error from the Tauri runtime (window, events, dialogs).
@@ -38,6 +40,7 @@ impl fmt::Display for Error {
             Self::InvalidRequest(e) => write!(f, "invalid request: {e}"),
             Self::Shortcut(e) => write!(f, "could not use shortcut {e}"),
             Self::Autostart(e) => write!(f, "could not change open at login: {e}"),
+            Self::Update(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "file error: {e}"),
             Self::Tauri(e) => write!(f, "{e}"),
         }
@@ -55,6 +58,12 @@ impl From<std::io::Error> for Error {
 impl From<tauri::Error> for Error {
     fn from(e: tauri::Error) -> Self {
         Self::Tauri(e)
+    }
+}
+
+impl From<tauri_plugin_updater::Error> for Error {
+    fn from(e: tauri_plugin_updater::Error) -> Self {
+        Self::Update(e.to_string())
     }
 }
 

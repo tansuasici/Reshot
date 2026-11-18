@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager, Wry};
 
 use crate::error::Result;
 use crate::settings::SettingsStore;
-use crate::{capture, settings_window};
+use crate::{capture, settings_window, updates};
 
 /// Let the menu finish closing so it is not in the screenshot.
 const MENU_CLOSE_DELAY: Duration = Duration::from_millis(200);
@@ -30,6 +30,13 @@ pub fn init(app: &AppHandle) -> Result<()> {
     )
     .or_else(|_| MenuItem::with_id(app, "capture", "Take Screenshot", true, None::<&str>))?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
+    let check_updates = MenuItem::with_id(
+        app,
+        "check_updates",
+        "Check for Updates…",
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app, "quit", "Quit Reshot", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
@@ -37,6 +44,7 @@ pub fn init(app: &AppHandle) -> Result<()> {
             &capture_item,
             &PredefinedMenuItem::separator(app)?,
             &settings,
+            &check_updates,
             &quit,
         ],
     )?;
@@ -63,6 +71,7 @@ pub fn init(app: &AppHandle) -> Result<()> {
                     }
                 });
             }
+            "check_updates" => updates::check_now(app),
             "quit" => app.exit(0),
             _ => {}
         });

@@ -100,8 +100,26 @@ version, no trial and no ads.
 <details>
 <summary><b>Does it upload my screenshots anywhere?</b></summary>
 <br>
-No. Reshot works entirely on your computer. It doesn't need an internet
-connection and doesn't send anything anywhere.
+No. Your screenshots never leave your computer. The only thing Reshot does
+online is check GitHub for a newer version (see below), and that request
+contains no screenshots or personal data.
+</details>
+
+<details>
+<summary><b>How do I get updates?</b></summary>
+<br>
+Reshot checks for a new version shortly after it starts. You can also check
+any time from the menu bar / tray icon → <b>Check for Updates…</b>. When there
+is one, Reshot asks first, then installs it and restarts.
+<ul>
+  <li><b>Mac:</b> because Reshot isn't signed with a paid Apple certificate yet,
+  macOS may ask for Screen Recording permission again after an update.</li>
+  <li><b>Linux:</b> updates install in place for the <code>.AppImage</code>. If
+  you installed the <code>.deb</code> or <code>.rpm</code>, you may be asked
+  for your password.</li>
+</ul>
+Updating from 0.2.1 or older? Download the new version once by hand; after
+that, updates come to you.
 </details>
 
 <details>
