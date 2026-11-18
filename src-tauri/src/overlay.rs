@@ -54,8 +54,15 @@ pub fn show(app: &AppHandle) -> Result<()> {
 }
 
 /// Make the (shown) overlay visible.
+///
+/// Focus is requested again here: on Linux, `show` is queued to the GTK
+/// thread and tao drops a `set_focus` made before the window is mapped, so
+/// the one in [`show`] is lost and the keyboard shortcuts would not work
+/// until the user clicked. By the time the frame is painted it is mapped.
 pub fn reveal(app: &AppHandle) -> Result<()> {
-    platform::set_overlay_opaque(&window(app)?, true);
+    let win = window(app)?;
+    platform::set_overlay_opaque(&win, true);
+    win.set_focus()?;
     Ok(())
 }
 
