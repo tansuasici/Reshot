@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1
 
 ### Changed
 - Starting Reshot no longer takes a screenshot. It starts quietly in the menu bar / tray; press the shortcut to capture.
