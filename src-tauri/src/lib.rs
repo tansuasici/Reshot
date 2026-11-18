@@ -9,6 +9,7 @@ mod settings;
 mod settings_window;
 mod shortcut;
 mod tray;
+mod updates;
 
 use tauri::{Manager, RunEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
@@ -26,6 +27,7 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(capture::FrameStore::default())
         .manage(commands::ClipboardStore::default())
         .invoke_handler(tauri::generate_handler![
@@ -52,6 +54,7 @@ pub fn run() {
             tray::init(handle)?;
             shortcut::register(handle);
             refresh_login_item(handle);
+            updates::check_on_launch(handle);
             Ok(())
         })
         .build(tauri::generate_context!());
