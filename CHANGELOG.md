@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+### Changed
+- The Mac app is now signed with a Developer ID and notarized by Apple. macOS opens it without the "can't check" warning, and Screen Recording permission now stays in place when Reshot updates.
+
+### Mac: Screen Recording permission, one last time
+Because the app's signature changed, macOS asks for Screen Recording permission once more after this update. Allow Reshot in *System Settings → Privacy & Security → Screen Recording*, then quit and reopen Reshot. Later updates keep the permission.
+
 ## 0.3.0
 
 ### New: Automatic updates
