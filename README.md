@@ -188,7 +188,10 @@ You can also work on the overlay UI in a plain browser with `npx vite`. When
 it isn't running inside Tauri, `src/ipc.ts` serves a generated test frame.
 
 Releases are built by GitHub Actions: pushing a `v*` tag builds installers for
-every platform and attaches them to a draft GitHub release.
+every platform and attaches them to a draft GitHub release. The release notes
+come from the matching `## X.Y.Z` section of `CHANGELOG.md`; the build fails if
+that section is missing. Mac builds are signed with a Developer ID certificate
+and notarized, using the `APPLE_*` repository secrets.
 
 </details>
 
