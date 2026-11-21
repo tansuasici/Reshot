@@ -5,7 +5,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -45,6 +44,55 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
+      # Every Mac build must be signed and notarized. Fail early, with a clear
+      # message, if a secret is missing (it would otherwise reach the bundler
+      # as an empty string).
+      - name: Check Apple signing secrets
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set."
+              missing=1
+            fi
+          done
+          exit $missing
+      # The release notes come from the CHANGELOG.md section for this tag
+      # (`## 0.3.1` for `v0.3.1`). No section, no release.
+      - name: Release notes from CHANGELOG
+        id: notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          section=$(awk -v v="$version" '
+            { sub(/\r$/, "") }
+            $0 == "## " v { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$section" | tr -d '[:space:]')" ]; then
+            echo "::error::CHANGELOG.md has no '## $version' section. Add release notes before tagging."
+            exit 1
+          fi
+          {
+            echo 'body<<RESHOT_NOTES_EOF'
+            printf '%s\n\n' "$section"
+            echo '### Download'
+            echo "- **Mac (Apple silicon):** \`Reshot_${version}_aarch64.dmg\`"
+            echo "- **Mac (Intel):** \`Reshot_${version}_x64.dmg\`"
+            echo "- **Windows:** \`Reshot_${version}_x64-setup.exe\` (or the \`.msi\`)"
+            echo "- **Linux:** \`.AppImage\`, \`.deb\` or \`.rpm\`"
+            echo 'RESHOT_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,10 +100,44 @@ jobs:
           # files and latest.json that installed copies check for updates.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS: sign with the Developer ID certificate and notarize, so
+          # Gatekeeper opens the app and Screen Recording permission survives
+          # updates. These override the ad-hoc identity in tauri.conf.json
+          # (kept for local builds).
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Reshot ${{ github.ref_name }}
-          releaseBody: See the assets below to download Reshot for your platform.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+      # Fail the job (and leave the draft unpublished) unless the Mac app is
+      # really Developer ID-signed and notarized.
+      - name: Verify Mac signature and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app=$(find src-tauri/target -maxdepth 5 -type d -path '*/bundle/macos/Reshot.app' | head -n 1)
+          if [ -z "$app" ]; then
+            # Fall back to the updater bundle, which holds the same app.
+            archive=$(find src-tauri/target -maxdepth 5 -type f -path '*/bundle/macos/Reshot.app.tar.gz' | head -n 1)
+            if [ -z "$archive" ]; then
+              echo "::error::No Reshot.app or Reshot.app.tar.gz under src-tauri/target."
+              exit 1
+            fi
+            mkdir -p "$RUNNER_TEMP/verify"
+            tar -xzf "$archive" -C "$RUNNER_TEMP/verify"
+            app="$RUNNER_TEMP/verify/Reshot.app"
+          fi
+          echo "Checking $app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -q '^Authority=Developer ID Application:' \
+            || { echo "::error::$app is not signed with a Developer ID certificate."; exit 1; }
+          spctl -a -t exec -vv "$app"
+          xcrun stapler validate "$app"
