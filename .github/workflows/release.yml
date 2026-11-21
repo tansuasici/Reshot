@@ -137,7 +137,12 @@ jobs:
           fi
           echo "Checking $app"
           codesign --verify --deep --strict --verbose=2 "$app"
-          codesign -dv "$app" 2>&1 | grep -q '^Authority=Developer ID Application:' \
-            || { echo "::error::$app is not signed with a Developer ID certificate."; exit 1; }
+          # Capture first: `grep -q` exits early, and under pipefail the
+          # SIGPIPE codesign then gets would fail the step on a good app.
+          details=$(codesign -dvv "$app" 2>&1)
+          if ! grep -q '^Authority=Developer ID Application:' <<<"$details"; then
+            echo "::error::$app is not signed with a Developer ID certificate."
+            exit 1
+          fi
           spctl -a -t exec -vv "$app"
           xcrun stapler validate "$app"
